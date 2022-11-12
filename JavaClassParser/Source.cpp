@@ -1,4 +1,8 @@
+#include"ClassFile.h"
+
+
 int main()
 {
-	Java::JavaClass j("C:\\Users\\Sudip Devnath\\OneDrive\\Desktop\\projects\\adder.class");
+	Java::ClassFile j("C:\\Users\\Sudip Devnath\\OneDrive\\Desktop\\projects\\adder.class");
+	return 0;
 }

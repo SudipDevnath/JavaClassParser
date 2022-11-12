@@ -130,7 +130,9 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="JavaClass.h" />
+    <ClInclude Include="ClassFile.h" />
+    <ClInclude Include="JavaCommon.h" />
+    <ClInclude Include="JavaException.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
