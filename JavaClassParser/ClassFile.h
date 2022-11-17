@@ -44,13 +44,13 @@ namespace Java
 		private:
 		};
 
-		class CONSTANT_Class_info : cp_info {
+		class CONSTANT_Class_info :public cp_info {
 		public:
 			CONSTANT_Class_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, name_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(name_index);
 			}
@@ -58,14 +58,14 @@ namespace Java
 			u2 name_index;
 		};
 
-		class CONSTANT_Fieldref_info : cp_info {
+		class CONSTANT_Fieldref_info :public cp_info {
 		public:
 			CONSTANT_Fieldref_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, class_index);
 				ReadBytes(infile, name_and_type_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(class_index)+"."+ std::to_string(name_and_type_index);
 			}
@@ -74,14 +74,14 @@ namespace Java
 			u2 name_and_type_index;
 		};
 
-		class CONSTANT_Methodref_info : cp_info {
+		class CONSTANT_Methodref_info :public cp_info {
 		public:
 			CONSTANT_Methodref_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, class_index);
 				ReadBytes(infile, name_and_type_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(class_index) + "." + std::to_string(name_and_type_index);
 			}
@@ -90,14 +90,14 @@ namespace Java
 			u2 name_and_type_index;
 		};
 
-		class CONSTANT_InterfaceMethodref_info : cp_info {
+		class CONSTANT_InterfaceMethodref_info :public cp_info {
 		public:
 			CONSTANT_InterfaceMethodref_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, class_index);
 				ReadBytes(infile, name_and_type_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(class_index) + "." + std::to_string(name_and_type_index);
 			}
@@ -106,13 +106,13 @@ namespace Java
 			u2 name_and_type_index;
 		};
 
-		class CONSTANT_String_info : cp_info {
+		class CONSTANT_String_info :public cp_info {
 		public:
 			CONSTANT_String_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, string_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(string_index);
 			}
@@ -120,13 +120,13 @@ namespace Java
 			u2 string_index;
 		};
 
-		class CONSTANT_Integer_info : cp_info {
+		class CONSTANT_Integer_info :public cp_info {
 		public:
 			CONSTANT_Integer_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, bytes);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(bytes);
 			}
@@ -134,13 +134,13 @@ namespace Java
 			u4 bytes;
 		};
 
-		class CONSTANT_Float_info : cp_info {
+		class CONSTANT_Float_info :public cp_info {
 		public:
 			CONSTANT_Float_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, bytes);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(bytes);
 			}
@@ -148,14 +148,14 @@ namespace Java
 			u4 bytes;
 		};
 
-		class CONSTANT_Long_info : cp_info {
+		class CONSTANT_Long_info :public cp_info {
 		public:
 			CONSTANT_Long_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, high_bytes);
 				ReadBytes(infile, low_bytes);
 			}
-			std::string print()
+			std::string print() override
 			{
 				long l = (high_bytes << 32) | low_bytes;
 				return std::to_string(l);
@@ -165,14 +165,14 @@ namespace Java
 			u4 low_bytes;
 		};
 
-		class CONSTANT_Double_info : cp_info {
+		class CONSTANT_Double_info :public cp_info {
 		public:
 			CONSTANT_Double_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, high_bytes);
 				ReadBytes(infile, low_bytes);
 			}
-			std::string print()
+			std::string print() override
 			{
 				long l = (high_bytes << 32) | low_bytes;
 				return std::to_string(l);
@@ -182,14 +182,14 @@ namespace Java
 			u4 low_bytes;
 		};
 
-		class CONSTANT_NameAndType_info : cp_info {
+		class CONSTANT_NameAndType_info :public cp_info {
 		public:
 			CONSTANT_NameAndType_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, name_index);
 				ReadBytes(infile, descriptor_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(name_index) + "." + std::to_string(descriptor_index);
 			}
@@ -198,7 +198,7 @@ namespace Java
 			u2 descriptor_index;
 		};
 
-		class CONSTANT_Utf8_info : cp_info {
+		class CONSTANT_Utf8_info :public cp_info {
 		public:
 			CONSTANT_Utf8_info(std::ifstream& infile)
 			{
@@ -208,10 +208,12 @@ namespace Java
 
 				for (u2 i = 0; i < length; i++)
 				{
-					ReadBytes(infile, this->bytes[i]);	
+					u1 temp = {};
+					ReadBytes(infile, temp);
+					bytes.push_back(temp);
 				}
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::string(bytes.begin(), bytes.end());
 			}
@@ -219,14 +221,14 @@ namespace Java
 			std::vector<u1> bytes;
 		};
 
-		class CONSTANT_MethodHandle_info : cp_info {
+		class CONSTANT_MethodHandle_info :public cp_info {
 		public:
 			CONSTANT_MethodHandle_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, reference_kind);
 				ReadBytes(infile, reference_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(reference_kind) + "." + std::to_string(reference_index);
 			}
@@ -235,13 +237,13 @@ namespace Java
 			u2 reference_index;
 		};
 
-		class CONSTANT_MethodType_info : cp_info {
+		class CONSTANT_MethodType_info :public cp_info {
 		public:
 			CONSTANT_MethodType_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, descriptor_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(descriptor_index);
 			}
@@ -249,14 +251,14 @@ namespace Java
 			u2 descriptor_index;
 		};
 
-		class CONSTANT_InvokeDynamic_info : cp_info {
+		class CONSTANT_InvokeDynamic_info :public cp_info {
 		public:
 			CONSTANT_InvokeDynamic_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, bootstrap_method_attr_index);
 				ReadBytes(infile, name_and_type_index);
 			}
-			std::string print()
+			std::string print() override
 			{
 				return std::to_string(bootstrap_method_attr_index) + "." + std::to_string(name_and_type_index);
 			}
@@ -347,7 +349,7 @@ namespace Java
 
 	private:
 
-		void ParseConstantPool(const std::ifstream& infile, u2 constant_pool_count)
+		void ParseConstantPool(std::ifstream& infile, u2 constant_pool_count)
 		{
 			/*
 			CONSTANT_Class 	7
@@ -366,11 +368,58 @@ namespace Java
 			CONSTANT_InvokeDynamic 	18
 			*/
 
+
+#define CONSTANT_Class 					7
+#define CONSTANT_Fieldref 				9
+#define CONSTANT_Methodref 				10
+#define CONSTANT_InterfaceMethodref 	11
+#define CONSTANT_String 				8
+#define CONSTANT_Integer 				3
+#define CONSTANT_Float 					4
+#define CONSTANT_Long 					5
+#define CONSTANT_Double 				6
+#define CONSTANT_NameAndType 			12
+#define CONSTANT_Utf8 					1
+#define CONSTANT_MethodHandle 			15
+#define CONSTANT_MethodType 			16
+#define CONSTANT_InvokeDynamic 			18
+
 			this->constant_pool.reserve(constant_pool_count-1);
 			for (u2 i =  1; i < constant_pool_count; i++)
 			{
-				
+				u1 tag;
+				ReadBytes(infile, tag);
+				std::shared_ptr<cp_info> temporary_container  = {};
+				switch ((int)tag)
+				{
+				case CONSTANT_Class:				temporary_container = std::make_shared<CONSTANT_Class_info>(infile);				break;
+				case CONSTANT_Fieldref:				temporary_container = std::make_shared<CONSTANT_Fieldref_info>(infile);				break;
+				case CONSTANT_Methodref:			temporary_container = std::make_shared<CONSTANT_Methodref_info>(infile);			break;
+				case CONSTANT_InterfaceMethodref:	temporary_container = std::make_shared<CONSTANT_InterfaceMethodref_info>(infile);	break;
+				case CONSTANT_String:				temporary_container = std::make_shared<CONSTANT_String_info>(infile);				break;
+				case CONSTANT_Integer:				temporary_container = std::make_shared<CONSTANT_Integer_info>(infile);				break;
+				case CONSTANT_Float:				temporary_container = std::make_shared<CONSTANT_Float_info>(infile);				break;
+				case CONSTANT_Long:					temporary_container = std::make_shared<CONSTANT_Long_info>(infile);					break;
+				case CONSTANT_Double:				temporary_container = std::make_shared<CONSTANT_Double_info>(infile);				break;
+				case CONSTANT_NameAndType:			temporary_container = std::make_shared<CONSTANT_NameAndType_info>(infile);			break;
+				case CONSTANT_Utf8:					temporary_container = std::make_shared<CONSTANT_Utf8_info>(infile);					break;
+				case CONSTANT_MethodHandle:			temporary_container = std::make_shared<CONSTANT_MethodHandle_info>(infile);			break;
+				case CONSTANT_MethodType:			temporary_container = std::make_shared<CONSTANT_MethodType_info>(infile);			break;
+				case CONSTANT_InvokeDynamic:		temporary_container = std::make_shared<CONSTANT_InvokeDynamic_info>(infile);		break;
+				default: throw JavaException("Inalid tag : " + (int)tag, __FILENAME__, __LINE__);
+				}
+				this->constant_pool.push_back(temporary_container);
 			}
+
+
+#ifdef _DEBUG
+			for (auto cp : this->constant_pool)
+			{
+				std::cout << cp->print() << std::endl;
+			}
+#endif
+
+
 
 		}
 	};
