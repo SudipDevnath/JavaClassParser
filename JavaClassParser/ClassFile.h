@@ -439,6 +439,7 @@ namespace Java
 		std::vector<u2> interfaces;
 		std::vector<field_info> fields;
 		std::vector<method_info> methods;
+		std::vector<attribute_info> attributes;
 
 	public:
 
@@ -558,10 +559,53 @@ namespace Java
 
 			ParseMethods(infile, methods_count);
 
+			u2 attributes_count;
+			ReadBytes(infile, attributes_count);
+#ifdef _DEBUG
+			std::cout << "----------------------------------------------" << std::endl;
+			std::cout << "attributes_count = " << attributes_count << std::endl;
+#endif
+
+			ParseAttributes(infile, attributes_count);
+
+			std::cout << "----------------------------------------------" << std::endl;
+
+
+			u1 dumy;
+			ReadBytes(infile, dumy);
+			if (infile.eof())
+			{
+				std::cout << "[EoF reached]" << std::endl;
+			}// check for EOF
+			else
+			{
+				std::cout << "[error reading]" << std::to_string(dumy) << std::endl;
+				throw JavaException("Invalid class file (Additional data): " + filepath, __FILENAME__, __LINE__);
+			}
+
+
+
 			infile.close();
 		}
 
 	private:
+
+		void ParseAttributes(std::ifstream& infile, u2 attributes_count)
+		{
+			this->attributes.reserve(attributes_count);
+
+			for (u2 i = 0; i < attributes_count; i++)
+			{
+				this->attributes.emplace_back(infile);
+			}
+
+#ifdef _DEBUG
+			for (auto& a : this->attributes)
+			{
+				std::cout << a.to_string() << std::endl;
+			}
+#endif
+		}
 
 
 		void ParseMethods(std::ifstream& infile, u2 methods_count)
@@ -574,7 +618,7 @@ namespace Java
 			}
 
 #ifdef _DEBUG
-			for (auto a : this->methods)
+			for (auto& a : this->methods)
 			{
 				std::cout << a.to_string() << std::endl;
 			}
@@ -591,7 +635,7 @@ namespace Java
 			}
 
 #ifdef _DEBUG
-			for (auto a : this->fields)
+			for (auto& a : this->fields)
 			{
 				std::cout << a.to_string() << std::endl;
 			}
