@@ -318,6 +318,20 @@ namespace Java
 				}
 			}
 
+			std::string to_string()
+			{
+				std::string s =
+					" [attribute_name_index] = " + std::to_string(attribute_name_index) +
+					" [attribute_length] = " + std::to_string(attribute_length) +
+					" [info] = ";
+				for (auto a : info)
+				{
+					s += (std::to_string(a) + ", ");
+				}
+
+				return s;
+			}
+
 		private:
 			u2 attribute_name_index;
 			u4 attribute_length;
@@ -341,6 +355,27 @@ namespace Java
 				}
 			}
 
+			std::string to_string()
+			{
+				std::string s =
+					" [access_flags] = " + std::to_string(access_flags) +
+					" [name_index] = " + std::to_string(name_index) +
+					" [descriptor_index] = " + std::to_string(descriptor_index) +
+					" [attributes_count] = " + std::to_string(attributes_count);
+
+
+				if (attributes_count != 0)
+				{
+					s += " [attributes] = ";
+					for (auto a : attributes)
+					{
+						s += a.to_string();
+					}
+				}
+					
+				return s;
+			}
+
 		private:
 			u2             access_flags;
 			u2             name_index;
@@ -349,14 +384,61 @@ namespace Java
 			std::vector<attribute_info> attributes;
 		};
 
+		/*****************************************************************************************************************************************************************************/
+
+		class method_info
+		{
+		public:
+			method_info() = delete;
+			method_info(std::ifstream& infile)
+			{
+				ReadBytes(infile, this->access_flags);
+				ReadBytes(infile, this->name_index);
+				ReadBytes(infile, this->descriptor_index);
+				ReadBytes(infile, this->attributes_count);
+
+				attributes.reserve(attributes_count);
+				for (u2 i = 0; i < attributes_count; i++)
+				{
+					attributes.emplace_back(infile);
+				}
+			}
+
+			std::string to_string()
+			{
+				std::string s =
+					" [access_flags] = " + std::to_string(access_flags) +
+					" [name_index] = " + std::to_string(name_index) +
+					" [descriptor_index] = " + std::to_string(descriptor_index) +
+					" [attributes_count] = " + std::to_string(attributes_count);
 
 
+				if (attributes_count != 0)
+				{
+					s += " [attributes] = ";
+					for (auto a : attributes)
+					{
+						s += a.to_string();
+					}
+				}
+
+				return s;
+			}
+
+		private:
+			u2             access_flags;
+			u2             name_index;
+			u2             descriptor_index;
+			u2             attributes_count;
+			std::vector<attribute_info> attributes;
+		};
 
 		/*****************************************************************************************************************************************************************************/
 
 		std::vector<std::shared_ptr<cp_info>> constant_pool;
 		std::vector<u2> interfaces;
 		std::vector<field_info> fields;
+		std::vector<method_info> methods;
 
 	public:
 
@@ -467,10 +549,37 @@ namespace Java
 
 			ParseFields(infile, fields_count);
 
+			u2 methods_count;
+			ReadBytes(infile, methods_count);
+#ifdef _DEBUG
+			std::cout << "----------------------------------------------" << std::endl;
+			std::cout << "methods_count = " << methods_count << std::endl;
+#endif
+
+			ParseMethods(infile, methods_count);
+
 			infile.close();
 		}
 
 	private:
+
+
+		void ParseMethods(std::ifstream& infile, u2 methods_count)
+		{
+			this->methods.reserve(methods_count);
+
+			for (u2 i = 0; i < methods_count; i++)
+			{
+				this->methods.emplace_back(infile);
+			}
+
+#ifdef _DEBUG
+			for (auto a : this->methods)
+			{
+				std::cout << a.to_string() << std::endl;
+			}
+#endif
+		}
 
 		void ParseFields(std::ifstream& infile, u2 fields_count)
 		{
@@ -480,6 +589,14 @@ namespace Java
 			{
 				this->fields.emplace_back(infile);
 			}
+
+#ifdef _DEBUG
+			for (auto a : this->fields)
+			{
+				std::cout << a.to_string() << std::endl;
+			}
+#endif
+
 		}
 
 		void ParseInterfaces(std::ifstream& infile, u2 interfaces_count)
