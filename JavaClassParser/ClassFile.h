@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "JavaCommon.h"
 #include "JavaException.h"
@@ -37,7 +38,6 @@ namespace Java
 		*/
 
 	private:
-
 
 		/*****************************************************************************************************************************************************************************/
 
@@ -298,8 +298,7 @@ namespace Java
 			u2 name_and_type_index;
 		};
 		/*****************************************************************************************************************************************************************************/
-
-		
+	
 		class attribute_info {
 
 		public:
@@ -307,10 +306,12 @@ namespace Java
 			attribute_info(std::ifstream& infile)
 			{
 				ReadBytes(infile, this->attribute_name_index);
-				ReadBytes(infile, this->attribute_length);
-				this->info.reserve(this->attribute_length);
 
-				for (u4 i = 0; i < this->attribute_length; i++)
+				u4 attribute_length;
+				ReadBytes(infile, attribute_length);
+				this->info.reserve(attribute_length);
+
+				for (u4 i = 0; i < attribute_length; i++)
 				{
 					u1 temp = {};
 					ReadBytes(infile, temp);
@@ -322,7 +323,6 @@ namespace Java
 			{
 				std::string s =
 					" [attribute_name_index] = " + std::to_string(attribute_name_index) +
-					" [attribute_length] = " + std::to_string(attribute_length) +
 					" [info] = ";
 				for (auto a : info)
 				{
@@ -334,10 +334,9 @@ namespace Java
 
 		private:
 			u2 attribute_name_index;
-			u4 attribute_length;
+
 			std::vector<u1> info;
 		};
-		
 		
 		class field_info {
 		public:
@@ -347,9 +346,10 @@ namespace Java
 				ReadBytes(infile, this->access_flags	  );
 				ReadBytes(infile, this->name_index		  );
 				ReadBytes(infile, this->descriptor_index  );
-				ReadBytes(infile, this->attributes_count  );
+				u2 attributes_count;
+				ReadBytes(infile, attributes_count  );
 
-				for (u4 i = 0; i < this->attributes_count; i++)
+				for (u4 i = 0; i < attributes_count; i++)
 				{
 					this->attributes.emplace_back(infile);
 				}
@@ -360,14 +360,13 @@ namespace Java
 				std::string s =
 					" [access_flags] = " + std::to_string(access_flags) +
 					" [name_index] = " + std::to_string(name_index) +
-					" [descriptor_index] = " + std::to_string(descriptor_index) +
-					" [attributes_count] = " + std::to_string(attributes_count);
+					" [descriptor_index] = " + std::to_string(descriptor_index);
 
 
-				if (attributes_count != 0)
+				if (attributes.size() != 0)
 				{
 					s += " [attributes] = ";
-					for (auto a : attributes)
+					for (auto& a : attributes)
 					{
 						s += a.to_string();
 					}
@@ -380,7 +379,7 @@ namespace Java
 			u2             access_flags;
 			u2             name_index;
 			u2             descriptor_index;
-			u2             attributes_count;
+
 			std::vector<attribute_info> attributes;
 		};
 
@@ -395,7 +394,8 @@ namespace Java
 				ReadBytes(infile, this->access_flags);
 				ReadBytes(infile, this->name_index);
 				ReadBytes(infile, this->descriptor_index);
-				ReadBytes(infile, this->attributes_count);
+				u2 attributes_count;
+				ReadBytes(infile, attributes_count);
 
 				attributes.reserve(attributes_count);
 				for (u2 i = 0; i < attributes_count; i++)
@@ -409,14 +409,13 @@ namespace Java
 				std::string s =
 					" [access_flags] = " + std::to_string(access_flags) +
 					" [name_index] = " + std::to_string(name_index) +
-					" [descriptor_index] = " + std::to_string(descriptor_index) +
-					" [attributes_count] = " + std::to_string(attributes_count);
+					" [descriptor_index] = " + std::to_string(descriptor_index);
 
 
-				if (attributes_count != 0)
+				if (attributes.size() != 0)
 				{
 					s += " [attributes] = ";
-					for (auto a : attributes)
+					for (auto& a : attributes)
 					{
 						s += a.to_string();
 					}
@@ -429,13 +428,13 @@ namespace Java
 			u2             access_flags;
 			u2             name_index;
 			u2             descriptor_index;
-			u2             attributes_count;
+
 			std::vector<attribute_info> attributes;
 		};
 
 		/*****************************************************************************************************************************************************************************/
 
-		std::vector<std::shared_ptr<cp_info>> constant_pool;
+		std::unordered_map<unsigned int,std::shared_ptr<cp_info>> constant_pool;
 		std::vector<u2> interfaces;
 		std::vector<field_info> fields;
 		std::vector<method_info> methods;
@@ -607,7 +606,6 @@ namespace Java
 #endif
 		}
 
-
 		void ParseMethods(std::ifstream& infile, u2 methods_count)
 		{
 			this->methods.reserve(methods_count);
@@ -687,29 +685,32 @@ namespace Java
 				ReadBytes(infile, tag);
 				switch ((int)tag)
 				{
-				case CONSTANT_Class:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_Class_info>(infile));				break;
-				case CONSTANT_Fieldref:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_Fieldref_info>(infile));				break;
-				case CONSTANT_Methodref:			this->constant_pool.emplace_back(std::make_shared<CONSTANT_Methodref_info>(infile));			break;
-				case CONSTANT_InterfaceMethodref:	this->constant_pool.emplace_back(std::make_shared<CONSTANT_InterfaceMethodref_info>(infile));	break;
-				case CONSTANT_String:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_String_info>(infile));				break;
-				case CONSTANT_Integer:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_Integer_info>(infile));				break;
-				case CONSTANT_Float:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_Float_info>(infile));				break;
-				case CONSTANT_Long:					this->constant_pool.emplace_back(std::make_shared<CONSTANT_Long_info>(infile));					break;
-				case CONSTANT_Double:				this->constant_pool.emplace_back(std::make_shared<CONSTANT_Double_info>(infile));				break;
-				case CONSTANT_NameAndType:			this->constant_pool.emplace_back(std::make_shared<CONSTANT_NameAndType_info>(infile));			break;
-				case CONSTANT_Utf8:					this->constant_pool.emplace_back(std::make_shared<CONSTANT_Utf8_info>(infile));					break;
-				case CONSTANT_MethodHandle:			this->constant_pool.emplace_back(std::make_shared<CONSTANT_MethodHandle_info>(infile));			break;
-				case CONSTANT_MethodType:			this->constant_pool.emplace_back(std::make_shared<CONSTANT_MethodType_info>(infile));			break;
-				case CONSTANT_InvokeDynamic:		this->constant_pool.emplace_back(std::make_shared<CONSTANT_InvokeDynamic_info>(infile));		break;
-				default: throw JavaException("Inalid tag : " + (int)tag, __FILENAME__, __LINE__);
+				case CONSTANT_Class:				this->constant_pool.emplace(i,std::make_shared<CONSTANT_Class_info>(infile));				break;
+				case CONSTANT_Fieldref:				this->constant_pool.emplace(i,std::make_shared<CONSTANT_Fieldref_info>(infile));			break;
+				case CONSTANT_Methodref:			this->constant_pool.emplace(i,std::make_shared<CONSTANT_Methodref_info>(infile));			break;
+				case CONSTANT_InterfaceMethodref:	this->constant_pool.emplace(i,std::make_shared<CONSTANT_InterfaceMethodref_info>(infile));	break;
+				case CONSTANT_String:				this->constant_pool.emplace(i,std::make_shared<CONSTANT_String_info>(infile));				break;
+				case CONSTANT_Integer:				this->constant_pool.emplace(i,std::make_shared<CONSTANT_Integer_info>(infile));				break;
+				case CONSTANT_Float:				this->constant_pool.emplace(i,std::make_shared<CONSTANT_Float_info>(infile));				break;
+				case CONSTANT_Long:			i++;	this->constant_pool.emplace(i,std::make_shared<CONSTANT_Long_info>(infile)); 				break;
+				case CONSTANT_Double:		i++;	this->constant_pool.emplace(i,std::make_shared<CONSTANT_Double_info>(infile));				break;
+				case CONSTANT_NameAndType:			this->constant_pool.emplace(i,std::make_shared<CONSTANT_NameAndType_info>(infile));			break;
+				case CONSTANT_Utf8:					this->constant_pool.emplace(i,std::make_shared<CONSTANT_Utf8_info>(infile));				break;
+				case CONSTANT_MethodHandle:			this->constant_pool.emplace(i,std::make_shared<CONSTANT_MethodHandle_info>(infile));		break;
+				case CONSTANT_MethodType:			this->constant_pool.emplace(i,std::make_shared<CONSTANT_MethodType_info>(infile));			break;
+				case CONSTANT_InvokeDynamic:		this->constant_pool.emplace(i,std::make_shared<CONSTANT_InvokeDynamic_info>(infile));		break;
+				default: throw JavaException("Inalid tag : " + std::to_string((int)tag), __FILENAME__, __LINE__);
 				}
 			}
 
 
 #ifdef _DEBUG
-			for (auto cp : this->constant_pool)
+			for (u2 i = 1; i < constant_pool_count; i++)
 			{
-				std::cout << cp->to_string() << std::endl;
+				if (this->constant_pool.find(i) != this->constant_pool.end())
+				{
+					std::cout << "#" << i << " :: " << this->constant_pool.at(i)->to_string() << std::endl;
+				}
 			}
 #endif
 
