@@ -16,26 +16,6 @@ namespace Java
 
 	class ClassFile
 	{
-        /*
-		ClassFile {
-		u4             magic;
-		u2             minor_version;
-		u2             major_version;
-		u2             constant_pool_count;
-		cp_info        constant_pool[constant_pool_count-1];
-		u2             access_flags;
-		u2             this_class;
-		u2             super_class;
-		u2             interfaces_count;
-		u2             interfaces[interfaces_count];
-		u2             fields_count;
-		field_info     fields[fields_count];
-		u2             methods_count;
-		method_info    methods[methods_count];
-		u2             attributes_count;
-		attribute_info attributes[attributes_count];
-		}
-		*/
 
 	private:
 
@@ -139,14 +119,16 @@ namespace Java
 
 			CONSTANT_Integer_info(std::ifstream& infile)
 			{
+				u4 bytes;
 				ReadBytes(infile, bytes);
+				this->value = bytes;
 			}
 			std::string to_string() override
 			{
-				return std::to_string(bytes);
+				return std::to_string((int)value);
 			}
 		private:
-			u4 bytes;
+			int value = 0;
 		};
 
 		class CONSTANT_Float_info :public cp_info {
@@ -171,17 +153,19 @@ namespace Java
 
 			CONSTANT_Long_info(std::ifstream& infile)
 			{
+				u4 high_bytes;
+				u4 low_bytes;
 				ReadBytes(infile, high_bytes);
 				ReadBytes(infile, low_bytes);
+
+				this->value = (static_cast<long long int>(high_bytes) << 32) | low_bytes;
 			}
 			std::string to_string() override
 			{
-				long l = (high_bytes << 32) | low_bytes;
-				return std::to_string(l);
+				return std::to_string(value);
 			}
 		private:
-			u4 high_bytes;
-			u4 low_bytes;
+			long long int value = 0L;
 		};
 
 		class CONSTANT_Double_info :public cp_info {
@@ -190,17 +174,19 @@ namespace Java
 
 			CONSTANT_Double_info(std::ifstream& infile)
 			{
+				u4 high_bytes;
+				u4 low_bytes;
 				ReadBytes(infile, high_bytes);
 				ReadBytes(infile, low_bytes);
+
+				this->value = (double)((static_cast<long long int>(high_bytes) << 32) | low_bytes);
 			}
 			std::string to_string() override
 			{
-				long l = (high_bytes << 32) | low_bytes;
-				return std::to_string(l);
+				return std::to_string(value);
 			}
 		private:
-			u4 high_bytes;
-			u4 low_bytes;
+			double value = 0.0;
 		};
 
 		class CONSTANT_NameAndType_info :public cp_info {
@@ -229,7 +215,8 @@ namespace Java
 			{
 				u2 length;
 				ReadBytes(infile, length);
-				this->bytes.reserve(length);
+				std::vector<u1> bytes;
+				bytes.reserve(length);
 
 				for (u2 i = 0; i < length; i++)
 				{
@@ -237,13 +224,16 @@ namespace Java
 					ReadBytes(infile, temp);
 					bytes.push_back(temp);
 				}
+
+				value = std::string(bytes.begin(), bytes.end());
 			}
 			std::string to_string() override
 			{
-				return std::string(bytes.begin(), bytes.end());
+				return value;
 			}
+			std::string value = {};
 		private:
-			std::vector<u1> bytes;
+			
 		};
 
 		class CONSTANT_MethodHandle_info :public cp_info {
@@ -299,49 +289,16 @@ namespace Java
 		};
 		/*****************************************************************************************************************************************************************************/
 	
-		class attribute_info {
+		class I_attribute_info {
 
 		public:
-			attribute_info() = delete;
-			attribute_info(std::ifstream& infile)
-			{
-				ReadBytes(infile, this->attribute_name_index);
-
-				u4 attribute_length;
-				ReadBytes(infile, attribute_length);
-				this->info.reserve(attribute_length);
-
-				for (u4 i = 0; i < attribute_length; i++)
-				{
-					u1 temp = {};
-					ReadBytes(infile, temp);
-					this->info.push_back(temp);
-				}
-			}
-
-			std::string to_string()
-			{
-				std::string s =
-					" [attribute_name_index] = " + std::to_string(attribute_name_index) +
-					" [info] = ";
-				for (auto a : info)
-				{
-					s += (std::to_string(a) + ", ");
-				}
-
-				return s;
-			}
-
-		private:
-			u2 attribute_name_index;
-
-			std::vector<u1> info;
+			virtual std::string to_string() = 0;
 		};
 		
 		class field_info {
 		public:
 			field_info() = delete;
-			field_info(std::ifstream& infile)
+			field_info(std::ifstream& infile, const std::unordered_map<unsigned int, std::shared_ptr<cp_info>>& constant_pool)
 			{
 				ReadBytes(infile, this->access_flags	  );
 				ReadBytes(infile, this->name_index		  );
@@ -351,7 +308,7 @@ namespace Java
 
 				for (u4 i = 0; i < attributes_count; i++)
 				{
-					this->attributes.emplace_back(infile);
+					this->attributes.emplace_back(ClassFile::make_Attribute_Instance(infile, constant_pool));
 				}
 			}
 
@@ -368,7 +325,7 @@ namespace Java
 					s += " [attributes] = ";
 					for (auto& a : attributes)
 					{
-						s += a.to_string();
+						s += a->to_string();
 					}
 				}
 					
@@ -380,7 +337,7 @@ namespace Java
 			u2             name_index;
 			u2             descriptor_index;
 
-			std::vector<attribute_info> attributes;
+			std::vector<std::shared_ptr<I_attribute_info>> attributes;
 		};
 
 		/*****************************************************************************************************************************************************************************/
@@ -389,7 +346,7 @@ namespace Java
 		{
 		public:
 			method_info() = delete;
-			method_info(std::ifstream& infile)
+			method_info(std::ifstream& infile,const std::unordered_map<unsigned int, std::shared_ptr<cp_info>>& constant_pool)
 			{
 				ReadBytes(infile, this->access_flags);
 				ReadBytes(infile, this->name_index);
@@ -400,7 +357,7 @@ namespace Java
 				attributes.reserve(attributes_count);
 				for (u2 i = 0; i < attributes_count; i++)
 				{
-					attributes.emplace_back(infile);
+					attributes.emplace_back(ClassFile::make_Attribute_Instance(infile, constant_pool));
 				}
 			}
 
@@ -417,7 +374,7 @@ namespace Java
 					s += " [attributes] = ";
 					for (auto& a : attributes)
 					{
-						s += a.to_string();
+						s += a->to_string();
 					}
 				}
 
@@ -429,8 +386,543 @@ namespace Java
 			u2             name_index;
 			u2             descriptor_index;
 
-			std::vector<attribute_info> attributes;
+			std::vector<std::shared_ptr<I_attribute_info>> attributes;
 		};
+
+		/*****************************************************************************************************************************************************************************/
+
+		class annotation {
+			u2 type_index;
+			u2 num_element_value_pairs;
+			class Element_value_pairs {
+				u2            element_name_index;
+//				element_value value;
+			};
+			std::vector<Element_value_pairs> element_value_pairs;
+		};
+
+		class ConstantValue_attribute : public I_attribute_info {
+			u2 constantvalue_index;
+		public:
+			ConstantValue_attribute() = delete;
+			ConstantValue_attribute(std::ifstream& infile)
+			{
+				ReadBytes(infile, this->constantvalue_index);
+			}
+			
+
+			std::string to_string() override
+			{
+				return ("[ConstantValue_attribute]= constantvalue_index = " + (int)constantvalue_index);
+			}
+		};
+
+		class Code_attribute : public I_attribute_info {
+			u2 max_stack;
+			u2 max_locals;
+
+			std::vector<u1> code;//u1 code[code_length];
+			
+			struct Exception_table {
+				Exception_table() = delete;
+				Exception_table(std::ifstream& infile)
+				{
+					ReadBytes(infile, this->start_pc);
+					ReadBytes(infile, this->end_pc);
+					ReadBytes(infile, this->handler_pc);
+					ReadBytes(infile, this->catch_type);
+				}
+				u2 start_pc;
+				u2 end_pc;
+				u2 handler_pc;
+				u2 catch_type;
+
+				std::string to_string()
+				{
+					std::string s;
+					s = "[start_pc] = " + std::
+				}
+			};
+
+			std::vector<Exception_table> exception_table;
+			std::vector<std::shared_ptr<I_attribute_info>> attributes;
+
+		public:
+			Code_attribute() = delete;
+			Code_attribute(std::ifstream& infile,const std::unordered_map<unsigned int, std::shared_ptr<cp_info>>& constant_pool)
+			{
+				ReadBytes(infile, this->max_stack);
+				ReadBytes(infile, this->max_locals);
+				u4 code_length;
+				ReadBytes(infile, code_length);
+				this->code.reserve(code_length);
+				for (u4 i = 0; i < code_length; i++)
+				{
+					u1 temp;
+					ReadBytes(infile, temp);
+					this->code.emplace_back(temp);
+				}
+				u2 exception_table_length;
+				ReadBytes(infile, exception_table_length);
+				this->exception_table.reserve(exception_table_length);
+				for (u2 i = 0; i < exception_table_length; i++)
+				{
+					this->exception_table.emplace_back(infile);
+				}
+				u2 attributes_count;
+				ReadBytes(infile, attributes_count);
+				for (u2 i = 0; i < attributes_count; i++)
+				{
+					this->attributes.emplace_back(ClassFile::make_Attribute_Instance(infile, constant_pool));
+				}
+			}
+
+
+			std::string to_string() override
+			{
+				std::string s;
+				
+				s = "[Code_attribute] = [max_stack] = " + std::to_string((int)this->max_stack) +
+					", [max_locals] = " + std::to_string((int)this->max_locals);
+					
+
+				if (this->code.size() > 0)
+				{
+					s += ", [code] = {";
+
+					for (auto& a : this->code)
+					{
+						s += ("[" + std::to_string((int)a) + "],");
+					}
+
+					s += "}";
+				}
+
+
+
+				return s;
+
+			}
+		};
+
+		class StackMapTable_attribute : public I_attribute_info {			// UNIMPLEMENTED: DO NOT USE
+			u2              attribute_name_index;
+			u4              attribute_length;
+			u2              number_of_entries;
+
+//			union stack_map_frame {
+//				same_frame;
+//				same_locals_1_stack_item_frame;
+//				same_locals_1_stack_item_frame_extended;
+//				chop_frame;
+//				same_frame_extended;
+//				append_frame;
+//				full_frame;
+//			};
+//
+//			std::vector<stack_map_frame> entries;
+
+		public:
+			StackMapTable_attribute() = delete;
+			StackMapTable_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class Exceptions_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 number_of_exceptions;
+			std::vector<u2> exception_index_table;
+
+		public:
+			Exceptions_attribute() = delete;
+			Exceptions_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class InnerClasses_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 number_of_classes;
+			class Classes {
+				u2 inner_class_info_index;
+				u2 outer_class_info_index;
+				u2 inner_name_index;
+				u2 inner_class_access_flags;
+			};
+			std::vector<Classes> classes;
+
+		public:
+			InnerClasses_attribute() = delete;
+			InnerClasses_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class EnclosingMethod_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 class_index;
+			u2 method_index;
+
+		public:
+			EnclosingMethod_attribute() = delete;
+			EnclosingMethod_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class Synthetic_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+
+		public:
+			Synthetic_attribute() = delete;
+			Synthetic_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class Signature_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 signature_index;
+
+		public:
+			Signature_attribute() = delete;
+			Signature_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class SourceFile_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 sourcefile_index;
+
+		public:
+			SourceFile_attribute() = delete;
+			SourceFile_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class SourceDebugExtension_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			std::vector<u1> debug_extension;
+
+		public:
+			SourceDebugExtension_attribute() = delete;
+			SourceDebugExtension_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class LineNumberTable_attribute : public I_attribute_info {
+
+			struct Line_number_table {   
+				Line_number_table() = delete;
+				Line_number_table(std::ifstream& infile)
+				{
+					ReadBytes(infile, this->start_pc);
+					ReadBytes(infile, this->line_number);
+				}
+				u2 start_pc;
+				u2 line_number;
+			};
+			std::vector<Line_number_table> line_number_table;
+		public:
+			LineNumberTable_attribute() = delete;
+			LineNumberTable_attribute(std::ifstream& infile)
+			{
+				u2 line_number_table_length;
+				ReadBytes(infile, line_number_table_length);
+				this->line_number_table.reserve(line_number_table_length);
+				for (u2 i = 0; i < line_number_table_length; i++)
+				{
+					this->line_number_table.emplace_back(infile);
+				}
+			}
+			std::string to_string() override
+			{
+				JP_UNIMPLMENTED_FEATURE
+			}
+		};
+
+		class LocalVariableTable_attribute : public I_attribute_info {
+
+			struct Local_variable_table {
+				Local_variable_table() = delete;
+				Local_variable_table(std::ifstream& infile)
+				{
+					ReadBytes(infile, this->start_pc);
+					ReadBytes(infile, this->length);
+					ReadBytes(infile, this->name_index);
+					ReadBytes(infile, this->descriptor_index);
+					ReadBytes(infile, this->index);
+				}
+
+				u2 start_pc;
+				u2 length;
+				u2 name_index;
+				u2 descriptor_index;
+				u2 index;
+			};
+			std::vector<Local_variable_table> local_variable_table;
+		public:
+			LocalVariableTable_attribute() = delete;
+			LocalVariableTable_attribute(std::ifstream& infile)
+			{
+				u2 local_variable_table_length;
+				ReadBytes(infile, local_variable_table_length);
+				this->local_variable_table.reserve(local_variable_table_length);
+				for (u2 i = 0; i < local_variable_table_length; i++)
+				{
+					this->local_variable_table.emplace_back(infile);
+				}
+			}
+			std::string to_string() override
+			{
+				JP_UNIMPLMENTED_FEATURE
+			}
+		};
+
+		class LocalVariableTypeTable_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 local_variable_type_table_length;
+			class Local_variable_type_table {
+				u2 start_pc;
+				u2 length;
+				u2 name_index;
+				u2 signature_index;
+				u2 index;
+			};
+			std::vector<Local_variable_type_table> local_variable_type_table;
+		public:
+			LocalVariableTypeTable_attribute() = delete;
+			LocalVariableTypeTable_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class Deprecated_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+		public:
+			Deprecated_attribute() = delete;
+			Deprecated_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class RuntimeVisibleAnnotations_attribute : public I_attribute_info {
+			u2         attribute_name_index;
+			u4         attribute_length;
+			u2         num_annotations;
+			std::vector<annotation> annotations;
+
+		public:
+			RuntimeVisibleAnnotations_attribute() = delete;
+			RuntimeVisibleAnnotations_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class RuntimeInvisibleAnnotations_attribute : public I_attribute_info {
+			u2         attribute_name_index;
+			u4         attribute_length;
+			u2         num_annotations;
+			std::vector<annotation> annotations;
+
+		public:
+			RuntimeInvisibleAnnotations_attribute() = delete;
+			RuntimeInvisibleAnnotations_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class RuntimeVisibleParameterAnnotations_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u1 num_parameters;
+			struct Parameter_annotations {
+				u2         num_annotations;
+				std::vector<annotation> annotations;
+			};
+			std::vector<Parameter_annotations> parameter_annotations;
+
+		public:
+			RuntimeVisibleParameterAnnotations_attribute() = delete;
+			RuntimeVisibleParameterAnnotations_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class RuntimeInvisibleParameterAnnotations_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u1 num_parameters;
+			struct Parameter_annotations {
+				u2         num_annotations;
+				std::vector<annotation> annotations;
+			};
+			std::vector<Parameter_annotations> parameter_annotations;
+
+		public:
+			RuntimeInvisibleParameterAnnotations_attribute() = delete;
+			RuntimeInvisibleParameterAnnotations_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class AnnotationDefault_attribute : public I_attribute_info {
+			u2            attribute_name_index;
+			u4            attribute_length;
+
+//			class element_value {
+//				u1 tag;
+//				union {
+//					u2 const_value_index;
+//
+//					{   u2 type_name_index;
+//					u2 const_name_index;
+//					} enum_const_value;
+//
+//					u2 class_info_index;
+//
+//					annotation annotation_value;
+//
+//					{   u2            num_values;
+//					element_value values[num_values];
+//					} array_value;
+//				} value;
+//			};
+
+//			element_value default_value;
+
+		public:
+			AnnotationDefault_attribute() = delete;
+			AnnotationDefault_attribute(std::ifstream& infile)
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+		};
+
+		class BootstrapMethods_attribute : public I_attribute_info {
+			u2 attribute_name_index;
+			u4 attribute_length;
+			u2 num_bootstrap_methods;
+			class Bootstrap_methods {
+				u2 bootstrap_method_ref;
+				u2 num_bootstrap_arguments;
+				std::vector<u2> bootstrap_arguments;
+			};
+			std::vector<Bootstrap_methods> bootstrap_methods;
+			
+		public:
+			BootstrapMethods_attribute() = delete;
+			BootstrapMethods_attribute(std::ifstream& infile)
+			{
+
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+			}
+
+			std::string to_string() override
+			{
+				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+			}
+
+		};
+
+
+
 
 		/*****************************************************************************************************************************************************************************/
 
@@ -438,7 +930,7 @@ namespace Java
 		std::vector<u2> interfaces;
 		std::vector<field_info> fields;
 		std::vector<method_info> methods;
-		std::vector<attribute_info> attributes;
+		std::vector< std::shared_ptr<I_attribute_info>> attributes;
 
 	public:
 
@@ -582,8 +1074,6 @@ namespace Java
 				throw JavaException("Invalid class file (Additional data): " + filepath, __FILENAME__, __LINE__);
 			}
 
-
-
 			infile.close();
 		}
 
@@ -595,13 +1085,13 @@ namespace Java
 
 			for (u2 i = 0; i < attributes_count; i++)
 			{
-				this->attributes.emplace_back(infile);
+				this->attributes.emplace_back(ClassFile::make_Attribute_Instance(infile, constant_pool));
 			}
 
 #ifdef _DEBUG
 			for (auto& a : this->attributes)
 			{
-				std::cout << a.to_string() << std::endl;
+				std::cout << a->to_string() << std::endl;
 			}
 #endif
 		}
@@ -612,7 +1102,7 @@ namespace Java
 
 			for (u2 i = 0; i < methods_count; i++)
 			{
-				this->methods.emplace_back(infile);
+				this->methods.emplace_back(infile, constant_pool);
 			}
 
 #ifdef _DEBUG
@@ -629,7 +1119,7 @@ namespace Java
 
 			for (u2 i = 0; i < fields_count; i++)
 			{
-				this->fields.emplace_back(infile);
+				this->fields.emplace_back(infile, constant_pool);
 			}
 
 #ifdef _DEBUG
@@ -713,9 +1203,51 @@ namespace Java
 				}
 			}
 #endif
+		}
+	
+		static std::shared_ptr<I_attribute_info> make_Attribute_Instance(std::ifstream& infile,const std::unordered_map<unsigned int, std::shared_ptr<cp_info>>& constant_pool)
+		{
+			u2 attribute_name_index;
+			u4 attribute_length;
+			ReadBytes(infile, attribute_name_index);
+			ReadBytes(infile, attribute_length);
 
+			if (constant_pool.find(attribute_name_index) != constant_pool.end())
+			{
 
+				std::shared_ptr<CONSTANT_Utf8_info> s = std::dynamic_pointer_cast<CONSTANT_Utf8_info>(constant_pool.at(attribute_name_index));
 
+				if (s == NULL) {
+					throw JavaException("Incorrect constant pool entry: " + std::to_string((int)attribute_name_index), __FILENAME__, __LINE__);
+				}
+
+				if (s->value == "ConstantValue") { return std::make_shared<ConstantValue_attribute>(infile);}
+				if (s->value == "Code") { return std::make_shared<Code_attribute>(infile, constant_pool);}
+				if (s->value == "StackMapTable") { return std::make_shared<StackMapTable_attribute>(infile);}
+				if (s->value == "Exceptions") { return std::make_shared<Exceptions_attribute>(infile);}
+				if (s->value == "InnerClasses") { return std::make_shared<InnerClasses_attribute>(infile);}
+				if (s->value == "EnclosingMethod") { return std::make_shared<EnclosingMethod_attribute>(infile);}
+				if (s->value == "Synthetic") { return std::make_shared<Synthetic_attribute>(infile);}
+				if (s->value == "Signature") { return std::make_shared<Signature_attribute>(infile);}
+				if (s->value == "SourceFile") { return std::make_shared<SourceFile_attribute>(infile);}
+				if (s->value == "SourceDebugExtension") { return std::make_shared<SourceDebugExtension_attribute>(infile);}
+				if (s->value == "LineNumberTable") { return std::make_shared<LineNumberTable_attribute>(infile);}
+				if (s->value == "LocalVariableTable") { return std::make_shared<LocalVariableTable_attribute>(infile);}
+				if (s->value == "LocalVariableTypeTable") { return std::make_shared<LocalVariableTypeTable_attribute>(infile);}
+				if (s->value == "Deprecated") { return std::make_shared<Deprecated_attribute>(infile);}
+				if (s->value == "RuntimeVisibleAnnotations") { return std::make_shared<RuntimeVisibleAnnotations_attribute>(infile);}
+				if (s->value == "RuntimeInvisibleAnnotations") { return std::make_shared<RuntimeInvisibleAnnotations_attribute>(infile);}
+				if (s->value == "RuntimeVisibleParameterAnnotations") { return std::make_shared<RuntimeVisibleParameterAnnotations_attribute>(infile);}
+				if (s->value == "RuntimeInvisibleParameterAnnotations") { return std::make_shared<RuntimeInvisibleParameterAnnotations_attribute>(infile);}
+				if (s->value == "AnnotationDefault") { return std::make_shared<AnnotationDefault_attribute>(infile);}
+				if (s->value == "BootstrapMethods") { return std::make_shared<BootstrapMethods_attribute>(infile);}
+
+				throw JavaException("Invalid attribute: " + s->value, __FILENAME__, __LINE__);
+			}
+			else
+			{
+				throw JavaException("Incorrect constant pool entry: " + std::to_string((int)attribute_name_index), __FILENAME__, __LINE__);
+			}
 		}
 	};
 }

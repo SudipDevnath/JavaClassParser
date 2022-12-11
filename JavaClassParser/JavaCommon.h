@@ -15,6 +15,10 @@
 
 #endif 
 
+
+#define JP_UNIMPLMENTED_FEATURE throw JavaException("unimplemented", __FILENAME__, __LINE__);
+
+
 #include <iostream>
 #include <fstream>
 #include <string>
