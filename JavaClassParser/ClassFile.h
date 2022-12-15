@@ -37,7 +37,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(name_index);
+				return "{" +std::to_string(name_index) + "}";
 			}
 		private:
 			u2 name_index;
@@ -54,7 +54,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(class_index)+"."+ std::to_string(name_and_type_index);
+				return "{"+ std::to_string(class_index) + "." + std::to_string(name_and_type_index) + "}";
 			}
 		private:
 			u2 class_index;
@@ -72,7 +72,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(class_index) + "." + std::to_string(name_and_type_index);
+				return "{" + std::to_string(class_index) + "." + std::to_string(name_and_type_index) + "}";
 			}
 		private:
 			u2 class_index;
@@ -90,7 +90,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(class_index) + "." + std::to_string(name_and_type_index);
+				return "{" + std::to_string(class_index) + "." + std::to_string(name_and_type_index) + "}";
 			}
 		private:
 			u2 class_index;
@@ -107,7 +107,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(string_index);
+				return "{" + std::to_string(string_index) + "}";
 			}
 		private:
 			u2 string_index;
@@ -125,7 +125,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string((int)value);
+				return "{" + std::to_string((int)value) + "}";
 			}
 		private:
 			int value = 0;
@@ -141,7 +141,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(bytes);
+				return "{" + std::to_string(bytes) + "}";
 			}
 		private:
 			u4 bytes;
@@ -162,7 +162,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(value);
+				return "{" + std::to_string(value) + "}";
 			}
 		private:
 			long long int value = 0L;
@@ -183,7 +183,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(value);
+				return "{" + std::to_string(value) + "}";
 			}
 		private:
 			double value = 0.0;
@@ -200,7 +200,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(name_index) + "." + std::to_string(descriptor_index);
+				return "{" + std::to_string(name_index) + "." + std::to_string(descriptor_index) + "}";
 			}
 		private:
 			u2 name_index;
@@ -229,7 +229,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return value;
+				return "{" + value + "}";
 			}
 			std::string value = {};
 		private:
@@ -247,7 +247,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(reference_kind) + "." + std::to_string(reference_index);
+				return "{" + std::to_string(reference_kind) + "." + std::to_string(reference_index) + "}";
 			}
 		private:
 			u1 reference_kind;
@@ -264,7 +264,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(descriptor_index);
+				return "{" + std::to_string(descriptor_index) + "}";
 			}
 		private:
 			u2 descriptor_index;
@@ -281,7 +281,7 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				return std::to_string(bootstrap_method_attr_index) + "." + std::to_string(name_and_type_index);
+				return "{" + std::to_string(bootstrap_method_attr_index) + "." + std::to_string(name_and_type_index) + "}";
 			}
 		private:
 			u2 bootstrap_method_attr_index;
@@ -329,7 +329,7 @@ namespace Java
 					}
 				}
 					
-				return s;
+				return "{" + s + "}";
 			}
 
 		private:
@@ -378,7 +378,7 @@ namespace Java
 					}
 				}
 
-				return s;
+				return "{" + s + "}";
 			}
 
 		private:
@@ -413,7 +413,7 @@ namespace Java
 
 			std::string to_string() override
 			{
-				return ("[ConstantValue_attribute]= constantvalue_index = " + (int)constantvalue_index);
+				return std::string("{") + "[ConstantValue_attribute]= constantvalue_index = " + std::to_string((int)constantvalue_index) + "}";
 			}
 		};
 
@@ -440,7 +440,12 @@ namespace Java
 				std::string to_string()
 				{
 					std::string s;
-					s = "[start_pc] = " + std::
+					s = "[start_pc] = " + std::to_string(start_pc) +
+						", [end_pc] = " + std::to_string(end_pc) +
+						", [handler_pc]" + std::to_string(handler_pc) +
+						", [catch_type]" + std::to_string(catch_type);
+
+					return "{" + s + "}";
 				}
 			};
 
@@ -495,12 +500,35 @@ namespace Java
 						s += ("[" + std::to_string((int)a) + "],");
 					}
 
-					s += "}";
+					s += "\b}";
 				}
 
 
+				if (this->exception_table.size() > 0)
+				{
+					s += ", [exception_table] = {";
 
-				return s;
+					for (auto& a : this->exception_table)
+					{
+						s += ("[" + a.to_string() + "],");
+					}
+
+					s += "\b}";
+				}
+
+				if (this->attributes.size() > 0)
+				{
+					s += ", [attributes] = {";
+
+					for (auto& a : this->attributes)
+					{
+						s += ("[" + a->to_string() + "],");
+					}
+
+					s += "\b}";
+				}
+
+				return "{" + s + "}";
 
 			}
 		};
@@ -629,19 +657,17 @@ namespace Java
 		};
 
 		class SourceFile_attribute : public I_attribute_info {
-			u2 attribute_name_index;
-			u4 attribute_length;
 			u2 sourcefile_index;
 
 		public:
 			SourceFile_attribute() = delete;
 			SourceFile_attribute(std::ifstream& infile)
 			{
-				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+				ReadBytes(infile, this->sourcefile_index);
 			}
 			std::string to_string() override
 			{
-				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+				return std::string("{") + "[sourcefile_index] = "+ std::to_string(this->sourcefile_index) + "}";
 			}
 		};
 
@@ -671,6 +697,13 @@ namespace Java
 					ReadBytes(infile, this->start_pc);
 					ReadBytes(infile, this->line_number);
 				}
+				std::string to_string()
+				{
+					std::string s;
+					s = "[start_pc]" + std::to_string(start_pc) +
+						", [line_number]" + std::to_string(line_number);
+					return "{" + s + "}";
+				}
 				u2 start_pc;
 				u2 line_number;
 			};
@@ -689,7 +722,25 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				JP_UNIMPLMENTED_FEATURE
+				std::string s;
+
+				if (this->line_number_table.size() > 0)
+				{
+					s += "[line_number_table] = {";
+
+					for (auto& a : this->line_number_table)
+					{
+						s += ("[" + a.to_string() + "],");
+					}
+
+					s += "\b}";
+				}
+				else
+				{
+					s = "[line_number_table] = empty";
+				}
+
+				return "{" + s + "}";
 			}
 		};
 
@@ -711,6 +762,16 @@ namespace Java
 				u2 name_index;
 				u2 descriptor_index;
 				u2 index;
+
+				std::string to_string()
+				{
+					std::string s = "[start_pc] = " + std::to_string(start_pc) +
+						"[length] = " + std::to_string(length) +
+						"[name_index] = " + std::to_string(name_index) +
+						"[descriptor_index] = " + std::to_string(descriptor_index) +
+						"[index] = " + std::to_string(index);
+					return "{" + s + "}";
+				}
 			};
 			std::vector<Local_variable_table> local_variable_table;
 		public:
@@ -727,7 +788,25 @@ namespace Java
 			}
 			std::string to_string() override
 			{
-				JP_UNIMPLMENTED_FEATURE
+				std::string s;
+
+				if (this->local_variable_table.size() > 0)
+				{
+					s += "[local_variable_table] = {";
+
+					for (auto& a : this->local_variable_table)
+					{
+						s += ("[" + a.to_string() + "],");
+					}
+
+					s += "\b}";
+				}
+				else
+				{
+					s = "[local_variable_table] = empty";
+				}
+
+				return "{" + s + "}";
 			}
 		};
 
