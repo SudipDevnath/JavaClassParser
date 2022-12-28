@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <bitset>
 
 #include "JavaCommon.h"
 #include "JavaException.h"
@@ -534,32 +535,172 @@ namespace Java
 		};
 
 		class StackMapTable_attribute : public I_attribute_info {			// UNIMPLEMENTED: DO NOT USE
-			u2              attribute_name_index;
-			u4              attribute_length;
-			u2              number_of_entries;
 
-//			union stack_map_frame {
-//				same_frame;
-//				same_locals_1_stack_item_frame;
-//				same_locals_1_stack_item_frame_extended;
-//				chop_frame;
-//				same_frame_extended;
-//				append_frame;
-//				full_frame;
-//			};
-//
-//			std::vector<stack_map_frame> entries;
+			class stack_map_frame {
+			private:
+//				class same_frame {};
+//				class same_locals_1_stack_item_frame{};
+//				class same_locals_1_stack_item_frame_extended{};
+//				class chop_frame{};
+//				class same_frame_extended{};
+//				class append_frame{};
+				class full_frame {
+
+				private:
+					class verification_type_info
+					{
+					public:
+						verification_type_info(std::ifstream& infile)
+						{
+							ReadBytes(infile, this->tag);
+							if (this->tag > 8 || this->tag < 0)
+							{
+								throw JavaException("INCORECT verification_type_info::tag:: " + std::to_string((int)tag), __FILENAME__, __LINE__);
+							}
+
+							if (this->tag == 7 || this->tag == 8)
+							{
+								ReadBytes(infile, this->extraBytes);
+								return;
+							}
+
+							extraBytes = 0;
+						}
+
+						u2 getExtraBytes()
+						{
+							if (this->tag == 7 || this->tag == 8)
+							{
+								return this->extraBytes;
+							}
+							else 
+							{
+								throw JavaException("verification_type_info::tag:: " + std::to_string((int)tag) + " do not contain extraBytes", __FILENAME__, __LINE__);
+							}
+						}
+
+						std::string to_string()
+						{
+							switch (this->tag)
+							{
+							case 0: {return std::string("{ tag=ITEM_Top }");																	}
+							case 1: {return std::string("{ tag=ITEM_Integer }");																}
+							case 2: {return std::string("{ tag=ITEM_Float }");																	}
+							case 3: {return std::string("{ tag=ITEM_Double }");																	}
+							case 4: {return std::string("{ tag=ITEM_Long }");																	}
+							case 5: {return std::string("{ tag=ITEM_Null }");																	}
+							case 6: {return std::string("{ tag=ITEM_UninitializedThis }");														}
+							case 7: {return std::string("{ tag=ITEM_Object, cpool_index= ")		+ std::to_string((int)this->extraBytes) + " }";	}
+							case 8: {return std::string("{ tag=ITEM_Uninitialized, offset= ")	+ std::to_string((int)this->extraBytes) + " }";	}
+							}
+						}
+						u1 tag;
+					private:
+						u2 extraBytes;
+					};
+
+				public:
+					full_frame(std::ifstream& infile)
+					{
+						ReadBytes(infile, this->frame_type);
+						ReadBytes(infile, this->offset_delta);
+						u2 number_of_locals;
+						ReadBytes(infile, number_of_locals);
+						this->locals.reserve(number_of_locals);
+
+						for (u1 i = 0; i < number_of_locals; i++)
+						{
+							this->locals.emplace_back(infile);
+						}
+
+						u2 number_of_stack_items;
+						ReadBytes(infile, number_of_stack_items);
+						this->stack.reserve(number_of_stack_items);
+
+						for (u1 i = 0; i < number_of_stack_items; i++)
+						{
+							this->stack.emplace_back(infile);
+						}
+					}
+
+					std::string to_string()
+					{
+						std::string s;
+						s = "{ full_frame = {";
+						s += (" frame_type = " + std::to_string((int)frame_type));
+						s += (", offset_delta = " + std::to_string((int)offset_delta));
+
+						s += ", locals = {";
+						for (auto& a : this->locals)
+						{
+							s += ("{" + a.to_string() + "},");
+						}
+						s += "\b }";
+
+						s += ", stack = {";
+						for (auto& a : this->stack)
+						{
+							s += ("{" + a.to_string() + "},");
+						}
+						s += "\b }";
+
+						s += " } }";
+
+						return s;
+					}
+
+					u1 frame_type;
+					u2 offset_delta;
+					std::vector<verification_type_info> locals;
+					std::vector<verification_type_info> stack;
+				};
+
+
+			public:
+//				same_frame									same_frame;
+//				same_locals_1_stack_item_frame				same_locals_1_stack_item_frame;
+//				same_locals_1_stack_item_frame_extended		same_locals_1_stack_item_frame_extended;
+//				chop_frame									chop_frame;
+//				same_frame_extended							same_frame_extended;
+//				append_frame								append_frame;
+				full_frame									m_full_frame;
+
+				stack_map_frame(std::ifstream& infile)
+					:
+					m_full_frame(infile)
+				{
+					
+				}
+			};
+
+			std::vector<stack_map_frame> entries;
 
 		public:
 			StackMapTable_attribute() = delete;
 			StackMapTable_attribute(std::ifstream& infile)
 			{
-				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+				u2 number_of_entries;
+				ReadBytes(infile, number_of_entries);
+				this->entries.reserve(number_of_entries);
+
+				for (u2 i = 0; i < number_of_entries; i++)
+				{
+					this->entries.emplace_back(infile);
+				}
 			}
 
 			std::string to_string() override
 			{
-				throw JavaException("unimplemented", __FILENAME__, __LINE__);
+				std::string s;
+				s = "{ StackMapTable_attribute = {entries = {";
+
+				for (auto& a : this->entries)
+				{
+					s += ("{" + a.m_full_frame.to_string() + "},");
+				}
+
+				s += "\b} } }";
+				return s;
 			}
 		};
 
@@ -792,14 +933,14 @@ namespace Java
 
 				if (this->local_variable_table.size() > 0)
 				{
-					s += "[local_variable_table] = {";
+					s += "[local_variable_table] = ";
 
 					for (auto& a : this->local_variable_table)
 					{
 						s += ("[" + a.to_string() + "],");
 					}
 
-					s += "\b}";
+					s += "\b";
 				}
 				else
 				{
@@ -1303,6 +1444,7 @@ namespace Java
 				if (s->value == "ConstantValue") { return std::make_shared<ConstantValue_attribute>(infile);}
 				if (s->value == "Code") { return std::make_shared<Code_attribute>(infile, constant_pool);}
 				if (s->value == "StackMapTable") { return std::make_shared<StackMapTable_attribute>(infile);}
+				if (s->value == "StackMap") { return std::make_shared<StackMapTable_attribute>(infile); }  // only for JAVA ME
 				if (s->value == "Exceptions") { return std::make_shared<Exceptions_attribute>(infile);}
 				if (s->value == "InnerClasses") { return std::make_shared<InnerClasses_attribute>(infile);}
 				if (s->value == "EnclosingMethod") { return std::make_shared<EnclosingMethod_attribute>(infile);}
